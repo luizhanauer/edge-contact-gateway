@@ -14,7 +14,7 @@ interface ContactPayload {
 }
 
 const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': 'https://hanauerlabs.com.br',
+  'Access-Control-Allow-Origin': 'https://hanauerlabs.com.br', // Mantenha o seu domínio real aqui
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
@@ -23,10 +23,17 @@ const handleOptions = (): Response => {
   return new Response(null, { headers: CORS_HEADERS });
 };
 
+// Função de codificação segura para UTF-8 (Evita o crash do btoa)
+const encodeSubject = (text: string): string => {
+  const utf8Bytes = new TextEncoder().encode(text);
+  const binaryString = String.fromCharCode(...utf8Bytes);
+  return `=?utf-8?B?${btoa(binaryString)}?=`;
+};
+
 const buildRawEmail = (env: Env, payload: ContactPayload): string => {
   return `From: ${env.SENDER_EMAIL}
 To: ${env.DESTINATION_EMAIL}
-Subject: =?utf-8?B?${btoa(`[Diagnóstico Hanauer Labs] ${payload.subject}`)}?=
+Subject: ${encodeSubject(`[Diagnóstico Hanauer Labs] ${payload.subject}`)}
 Content-Type: text/plain; charset="utf-8"
 
 Nova solicitação de diagnóstico técnico:
@@ -78,6 +85,7 @@ export default {
       return await dispatchEmail(env, body);
 
     } catch (error) {
+      // O log de erro ficará visível no painel da Cloudflare para debug
       console.error('Worker Processing Error:', error);
       
       return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
